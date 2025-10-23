@@ -16,7 +16,7 @@ router.post("/login", async (req, res) => {
 
     // Find user
     const result = await pool.query(
-      "SELECT id, username, password, full_name FROM users WHERE username = $1",
+      "SELECT id, username, password, full_name, role, admin_id FROM users WHERE username = $1",
       [username]
     );
 
@@ -37,7 +37,9 @@ router.post("/login", async (req, res) => {
     res.json({
       id: user.id,
       username: user.username,
-      fullName: user.full_name
+      fullName: user.full_name,
+      role: user.role,
+      adminId: user.admin_id
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -45,13 +47,18 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Create new user (admin only - you can call this manually)
+// Create new user (admin only)
 router.post("/create-user", async (req, res) => {
   try {
-    const { username, password, fullName } = req.body;
+    const { username, password, fullName, role, adminId } = req.body;
 
     if (!username || !password || !fullName) {
       return res.status(400).json({ error: "All fields required" });
+    }
+
+    // Validate role
+    if (role && !['admin', 'driver'].includes(role)) {
+      return res.status(400).json({ error: "Invalid role" });
     }
 
     // Hash password
@@ -59,8 +66,8 @@ router.post("/create-user", async (req, res) => {
 
     // Insert user
     const result = await pool.query(
-      "INSERT INTO users (username, password, full_name) VALUES ($1, $2, $3) RETURNING id, username, full_name",
-      [username, hashedPassword, fullName]
+      "INSERT INTO users (username, password, full_name, role, admin_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, full_name, role",
+      [username, hashedPassword, fullName, role || 'driver', adminId || null]
     );
 
     res.json(result.rows[0]);
