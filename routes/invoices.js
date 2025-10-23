@@ -218,14 +218,14 @@ router.get("/farmer/:farmerId", async (req, res) => {
 
       doc.fontSize(12).font("Helvetica-Bold");
       doc.text("Total Paid (Kuul Jama ):", col4, yPosition);
-      doc.text(`Rs${totalPaid.toFixed(2)}. /-`, col6, yPosition);
+      doc.text(`Rs ${totalPaid.toFixed(2)} /-`, col6, yPosition);
       yPosition += 25;
     }
 
     // Final Balance
     doc.fontSize(14).font("Helvetica-Bold");
-    doc.text("Balance Due (Bakaya Rashi):", col4, yPosition);
-    doc.text(`Rs${balance.toFixed(2)}  /-`, col6, yPosition, {
+    doc.text("Balance Due:", col4, yPosition);
+    doc.text(`Rs ${balance.toFixed(2)} /-`, col6, yPosition, {
       underline: true
     });
 
