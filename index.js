@@ -6,6 +6,7 @@ import farmersRouter from "./routes/farmers.js";
 import servicesRouter from "./routes/services.js";
 import entriesRouter from "./routes/entries.js";
 import invoiceRoutes from "./routes/invoices.js";
+import authRoutes from "./routes/auth.js";
 
 dotenv.config();
 const app = express();
@@ -19,6 +20,7 @@ app.use("/farmers", farmersRouter);
 app.use("/services", servicesRouter);
 app.use("/entries", entriesRouter);
 app.use("/invoices", invoiceRoutes);
+app.use("/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚜 Tractor Hisaab API is running!");

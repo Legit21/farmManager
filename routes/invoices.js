@@ -1,4 +1,4 @@
-// invoices.js
+// invoices.js - Simplified version without custom fonts
 import express from "express";
 import { pool } from "../db.js";
 import PDFDocument from "pdfkit";
@@ -22,15 +22,22 @@ router.get("/farmer/:farmerId", async (req, res) => {
 
     const farmer = farmerResult.rows[0];
 
-    // Get all entries for this farmer
+    // Get userId from query params
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ error: "User ID required" });
+    }
+
+    // Get all entries for this farmer and user
     const entriesResult = await pool.query(
-      `SELECT he.id, he.entry_date, s.type as service_type,  
+      `SELECT he.id, he.entry_date, s.type as service_type, he.remark,
               he.hours, s.rate, (he.hours * s.rate) as cost
        FROM hisaab_entries he
        JOIN services s ON he.service_id = s.id
-       WHERE he.farmer_id = $1
+       WHERE he.farmer_id = $1 AND he.user_id = $2
        ORDER BY he.entry_date DESC`,
-      [farmerId]
+      [farmerId, userId]
     );
 
     const entries = entriesResult.rows;
@@ -56,20 +63,21 @@ router.get("/farmer/:farmerId", async (req, res) => {
     doc.pipe(res);
 
     // Header
-    doc.fontSize(24).text("Tipaniya Farm Services", { align: "center" });
+    doc.fontSize(24).text("Tipaniya Krishi Sevayen", { align: "center" });
+    doc.fontSize(18).text("(टिपानिया कृषि सेवाएं)", { align: "center" });
     doc.moveDown(0.5);
-    doc.fontSize(12).text(`Date: ${new Date().toLocaleDateString("en-IN")}`, { align: "center" });
+    doc.fontSize(12).text(`Dinank/Date: ${new Date().toLocaleDateString("en-IN")}`, { align: "center" });
     doc.moveDown(1.5);
 
     // Farmer Details
-    doc.fontSize(14).text(`Farmer Name: ${farmer.name}`);
-    doc.fontSize(12).text(`Contact: ${farmer.contact}`);
+    doc.fontSize(14).text(`Kisan ka Naam / Farmer Name: ${farmer.name}`);
+    doc.fontSize(12).text(`Sampark Sutra / Contact: ${farmer.contact}`);
     doc.moveDown(1.5);
 
     // Table Header
     const tableTop = doc.y;
     const col1 = 50;
-    const col2 = 80;
+    const col2 = 90;
     const col3 = 170;
     const col4 = 280;
     const col5 = 390;
@@ -78,17 +86,26 @@ router.get("/farmer/:farmerId", async (req, res) => {
     doc.fontSize(10).font("Helvetica-Bold");
     doc.text("S.No", col1, tableTop);
     doc.text("Date", col2, tableTop);
-    doc.text("Service Type", col3, tableTop);
-    doc.text("Description", col4, tableTop);
-    doc.text("Time (hrs)", col5, tableTop);
-    doc.text("Cost (Rs)", col6, tableTop);
+    doc.text("Service", col3, tableTop);
+    doc.text("Details", col4, tableTop);
+    doc.text("Hours", col5, tableTop);
+    doc.text("Amount", col6, tableTop);
+
+    // Hindi headers on next line
+    doc.fontSize(9);
+    doc.text("(क्र.सं.)", col1, tableTop + 12);
+    doc.text("(दिनांक)", col2, tableTop + 12);
+    doc.text("(सेवा)", col3, tableTop + 12);
+    doc.text("(विवरण)", col4, tableTop + 12);
+    doc.text("(घंटे)", col5, tableTop + 12);
+    doc.text("(राशि ₹)", col6, tableTop + 12);
 
     // Draw line under header
-    doc.moveTo(col1, tableTop + 15).lineTo(560, tableTop + 15).stroke();
+    doc.moveTo(col1, tableTop + 25).lineTo(560, tableTop + 25).stroke();
 
     // Table Rows
     doc.font("Helvetica");
-    let yPosition = tableTop + 25;
+    let yPosition = tableTop + 35;
 
     entries.forEach((entry, index) => {
       if (yPosition > 700) {
@@ -101,29 +118,32 @@ router.get("/farmer/:farmerId", async (req, res) => {
       const hours = parseFloat(entry.hours).toFixed(2);
       const cost = parseFloat(entry.cost).toFixed(2);
 
+      doc.fontSize(10);
       doc.text((index + 1).toString(), col1, yPosition);
-      doc.text(formattedDate, col2, yPosition);
-      doc.text(entry.service_type, col3, yPosition);
-      doc.text(description.substring(0, 20), col4, yPosition);
+      doc.text(formattedDate, col2, yPosition, { width: 70 });
+      doc.text(entry.service_type, col3, yPosition, { width: 100 });
+      doc.text(description.substring(0, 25), col4, yPosition, { width: 100 });
       doc.text(hours, col5, yPosition);
       doc.text(cost, col6, yPosition);
 
-      yPosition += 25;
+      yPosition += 30;
     });
 
     // Draw line before total
     doc.moveTo(col1, yPosition).lineTo(560, yPosition).stroke();
-    yPosition += 10;
+    yPosition += 15;
 
     // Total
-    doc.fontSize(12).font("Helvetica-Bold");
-    doc.text("Total:", col4, yPosition);
-    doc.text(`Rs ${totalCost.toFixed(2)}`, col6, yPosition);
+    doc.fontSize(14).font("Helvetica-Bold");
+    doc.text("Total Amount (कुल राशि):", col4, yPosition);
+    doc.text(`₹${totalCost.toFixed(2)}`, col6, yPosition);
+
+    yPosition += 40;
 
     // Footer
     doc.fontSize(10).font("Helvetica");
     doc.text(
-      "Thank you",
+      "Thank you for your business! / आपके व्यवसाय के लिए धन्यवाद!",
       50,
       doc.page.height - 50,
       { align: "center" }
